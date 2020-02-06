@@ -52,7 +52,7 @@ public class Bot {
      * @return the result
      **/
     public String run() {
-        if(!teslaBuilt){//at least 1 own tesla exist
+        if(!teslaBuilt()){//at least 1 own tesla exist
             if (isUnderAttack()) {
                 return defendRow(); //greed by my lowest defend value
             } else if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
@@ -66,6 +66,15 @@ public class Bot {
             }
         }
         else{}//sistem fawis
+    }
+    /**
+     * is Tesla already built at least 1
+     *
+     * @return true if there is at least 1 tesla
+     **/
+    private boolean teslaBuilt(){
+        
+        return true;
     }
     /**
      * Need energy
@@ -171,7 +180,28 @@ public class Bot {
         }
         return false;
     }
-
+    /**
+     * Do nothing command
+     *
+     * @return the result
+     **/
+    private String attackByLowestDef() {
+        int weakestSpot=0;//most vurneable spot by row
+        float tempVurneability=0;
+        for (int i = gameHeight; i >= 0; i--) {
+            int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
+            int enemyDefencekOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENCE, i).size();
+            int enemyTeslaOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.TESLA, i).size();
+            int enemyEnergyOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ENERGY, i).size();
+            int enemyRowStrength = enemyDefenseOnRow*3 + enemyAttackOnRow + enemyEnergyOnRow + enemyTeslaOnRow;
+            int myAttackOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ATTACK, i).size();
+            if(enemyRowStrength - (myAttackOnRow/2) > tempVurneability) weakestSpot = i;
+        }
+        for (int i = 0; i >= (gameWidth / 2) - 1; i++) {
+            if (isCellEmpty(i, weakestSpot)) {
+                return buildCommand(i, weakestSpot, BuildingType.ATTACK);}
+            }
+    }
     /**
      * Do nothing command
      *
@@ -221,5 +251,20 @@ public class Bot {
      **/
     private boolean canAffordBuilding(BuildingType buildingType) {
         return myself.energy >= gameDetails.buildingsStats.get(buildingType).price;
+    }
+    /**
+     * Get all buildings for player in row y
+     *
+     * @param playerType the player type
+     * @param filter     the filter
+     * @param y          the y
+     * @return the result
+     **/
+    private List<Building> getAllBuildingsForPlayer(PlayerType playerType, Predicate<Building> filter, int y) {
+        return gameState.getGameMap().stream()
+                .filter(c -> c.cellOwner == playerType && c.y == y)
+                .flatMap(c -> c.getBuildings().stream())
+                .filter(filter)
+                .collect(Collectors.toList());
     }
 }
