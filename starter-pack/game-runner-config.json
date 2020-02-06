@@ -4,6 +4,6 @@
   "verbose-mode": true,
   "max-runtime-ms": 2000,
   "player-a": "console",
-  "player-b": "./reference-bot/java",
+  "player-b": "console",
   "is-tournament-mode": false
 }
