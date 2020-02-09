@@ -124,6 +124,8 @@ public class Bot {
             return buildCommand(i, j, BuildingType.TESLA);
         } else if ((i+1 < gameDetails.mapHeight) && isCellEmpty(i+1, j)) {
             return buildCommand(i, j, BuildingType.TESLA);
+        } else if (isCellEmpty(i, j)){
+            return buildCommand(i, j, BuildingType.TESLA);
         } else {
             return NOTHING_COMMAND;
         } 
