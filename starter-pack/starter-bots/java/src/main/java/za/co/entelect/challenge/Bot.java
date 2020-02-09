@@ -57,15 +57,17 @@ public class Bot {
                 return defendRow(); //greed by my lowest defend value
             } else if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
                 return buildEnergy(); // build until NOT(needEnergy())
-            } /*else if (canAffordBuilding(BuildingType.TESLA)) { 
-                return buildEnergy(); // ini butuh mekanisme kalo udah 200 energy
-            } */else if (canAffordBuilding(BuildingType.ATTACK)) {
+            } else if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (buildTesla()!= NOTHING_COMMAND)) { 
+                return buildTesla(); // build Tesla
+            } else if (canAffordBuilding(BuildingType.ATTACK)) {
                 return attackByLowestDef(); // greed by lowest enemy defence
             } else {
                 return doNothingCommand();
             }
         }
-        else{}//sistem fawis
+        else{
+            return NOTHING_COMMAND; //sistem fawis in here
+        }
     }
     /**
      * is Tesla already built at least 1
@@ -73,9 +75,60 @@ public class Bot {
      * @return true if there is at least 1 tesla
      **/
     private boolean teslaBuilt(){
-        
-        return true;
+        int myTesla = 0;
+        for (int i = 0; i < gameHeight; i++) {
+            myTesla += getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.TESLA, i).size();
+        }
+        return (myTesla > 0);
     }
+    /**
+     * is Energy enough for Tesla Requirement
+     * @return true if energy > Tesla construct Cost + one Tesla fire Cost
+     */
+    private boolean isteslaEnergyReq(){
+        return (myself.energy >= 200);
+    }
+
+    /**
+     * Build Tesla
+     * @return command to build tesla
+     */
+    private String buildTesla() {
+        int mostEnemyAtt = 0;
+        int EnemyAttRow = 0;
+        int mostEnemyDeff = 0;
+        int EnemyDeffRow = 0;
+        int i;
+        boolean crampedAtt;
+        for (i=0; i < gameDetails.mapHeight; i++){
+            int EnemyAtt = getAllBuildingsForPlayer(PlayerType.A, b-> b.buildingType == BuildingType.ATTACK, i);
+            int EnemyDeff = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i);
+            if (mostEnemyAtt < EnemyAtt){
+                mostEnemyAtt = EnemyAtt;
+                EnemyAttRow = i;
+            }
+            if (mostEnemyDeff < EnemyDeff) {
+                mostEnemyDeff = EnemyDeff;
+                EnemyDeffRow = i;
+            }
+        }
+        if (mostEnemyAtt > 4){
+            j = gameDetails.mapWidth/2 - 4 ;
+            i = EnemyAttRow;
+        } else {
+            j = gameDetails.mapWidth/2 - 1;
+            i = EnemyDeffRow;
+        }
+
+        if ((i-1>=0) && isCellEmpty(i-1, j)){ //Validasi nilai?
+            return buildCommand(i, j, BuildingType.TESLA);
+        } else if ((i+1 < gameDetails.mapHeight) && isCellEmpty(i+1, j)) {
+            return buildCommand(i, j, BuildingType.TESLA);
+        } else {
+            return NOTHING_COMMAND;
+        } 
+    }
+
     /**
      * Need energy
      *
