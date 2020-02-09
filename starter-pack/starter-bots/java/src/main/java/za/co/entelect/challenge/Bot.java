@@ -2,16 +2,18 @@ package za.co.entelect.challenge;
 
 import za.co.entelect.challenge.entities.*;
 import za.co.entelect.challenge.enums.BuildingType;
+import za.co.entelect.challenge.enums.Direction;
 import za.co.entelect.challenge.enums.PlayerType;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static za.co.entelect.challenge.enums.BuildingType.ATTACK;
-import static za.co.entelect.challenge.enums.BuildingType.DEFENSE;
+import static za.co.entelect.challenge.enums.BuildingType.*;
+import static za.co.entelect.challenge.entities.BuildingStats.*;
 
 public class Bot {
     private static final String NOTHING_COMMAND = "";
@@ -52,7 +54,7 @@ public class Bot {
      * @return the result
      **/
     public String run() {
-        if(ironCurtainCondition()) return(buildCommand(0, 0, BuildingType.IRONCURTAIN));
+        if(ironCurtainCondition()) return buildCommand(0, 0, BuildingType.IRONCURTAIN);
         if(!teslaBuilt()){//at least 1 own tesla exist
             if (isUnderAttack()) {
                 return defendRow(); //greed by my lowest defend value
@@ -99,11 +101,11 @@ public class Bot {
         int EnemyAttRow = 0;
         int mostEnemyDeff = 0;
         int EnemyDeffRow = 0;
-        int i;
+        int i,j;
         boolean crampedAtt;
         for (i=0; i < gameDetails.mapHeight; i++){
-            int EnemyAtt = getAllBuildingsForPlayer(PlayerType.A, b-> b.buildingType == BuildingType.ATTACK, i);
-            int EnemyDeff = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i);
+            int EnemyAtt = getAllBuildingsForPlayer(PlayerType.A, b-> b.buildingType == BuildingType.ATTACK, i).size();
+            int EnemyDeff = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i).size();
             if (mostEnemyAtt < EnemyAtt){
                 mostEnemyAtt = EnemyAtt;
                 EnemyAttRow = i;
@@ -166,6 +168,7 @@ public class Bot {
                 }
             }
         }
+        return "";
     }
     /**
      * Defend row
@@ -188,9 +191,9 @@ public class Bot {
         return placeDefence(weakestSpot);
     }
     private String placeDefence(int y) {
-        int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
+        int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, y).size();
         boolean enoughEnergy = myEnergyOnRow >=2;
-        if (canAffordBuilding(BuildingType.DEFENCE))
+        if (canAffordBuilding(BuildingType.DEFENSE))
         {
             for (int i = 5; i >= (gameWidth / 2) - 1; i++) {
             if (isCellEmpty(i, y)) {
@@ -246,7 +249,7 @@ public class Bot {
         float tempVurneability=0;
         for (int i = gameHeight; i >= 0; i--) {
             int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
-            int enemyDefencekOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENCE, i).size();
+            int enemyDefenseOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENSE, i).size();
             int enemyTeslaOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.TESLA, i).size();
             int enemyEnergyOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ENERGY, i).size();
             int enemyRowStrength = enemyDefenseOnRow*3 + enemyAttackOnRow + enemyEnergyOnRow + enemyTeslaOnRow;
@@ -257,6 +260,7 @@ public class Bot {
             if (isCellEmpty(i, weakestSpot)) {
                 return buildCommand(i, weakestSpot, BuildingType.ATTACK);}
             }
+        return "";
     }
     /**
      * Do nothing command
@@ -333,7 +337,7 @@ public class Bot {
         return gameState.getGameMap().stream()
                 //.filter(p -> p.playerType == playerType)
                 .flatMap(c -> c.getMissiles().stream())
-                .filter(direction.LEFT)
+                .filter(m -> m.getPlayerType() == playerType)
                 .collect(Collectors.toList());
     }
     /**
@@ -345,7 +349,7 @@ public class Bot {
         return gameState.getGameMap().stream()
                 .filter(c -> c.cellOwner == PlayerType.B)
                 .flatMap(c -> c.getBuildings().stream())
-                .filter(BuildingType.TESLA && (constructionTimeLeft <=1))
+                .filter(b -> b.buildingType == BuildingType.TESLA && (b.constructionTimeLeft <= 1 ))
                 .collect(Collectors.toList());
     }
     /**
@@ -354,9 +358,43 @@ public class Bot {
      * @return the result
      **/
     private boolean ironCurtainCondition() {
+        int TeslaEnergyPerShot = 100;
         boolean cond1 = canAffordBuilding(BuildingType.IRONCURTAIN); //bisa beli iron curtain
-        boolean cond2 = getAllMissilesForPlayer(PlayerType.B) > 7; // kalo ada missile lebih dari x
-        boolean cond3 = enemyTeslaChecker().size() > 0 && opponent.energy >= gameDetails.buildingsStats.get(BuildingType.TESLA).energyPerShot + 20 ; //tesla ready to fire checker
+        boolean cond2 = getAllMissilesForPlayer(PlayerType.B).size() > 7; // kalo ada missile lebih dari x
+        boolean cond3 = enemyTeslaChecker().size() > 0 && opponent.energy >= TeslaEnergyPerShot + 20 ; //tesla ready to fire checker
         return(cond1 && (cond2 || cond3));
+    }
+
+    /**
+     * Construct build command
+     *
+     * @param x            the x
+     * @param y            the y
+     * @param buildingType the building type
+     * @return the result
+     **/
+    private String buildCommand(int x, int y, BuildingType buildingType) {
+        return String.format("%d,%d,%d", x, y, buildingType);
+    }
+
+    /**
+     * Checks if cell at x,y is empty
+     *
+     * @param x the x
+     * @param y the y
+     * @return the result
+     **/
+    private boolean isCellEmpty(int x, int y) {
+        Optional<CellStateContainer> cellOptional = gameState.getGameMap().stream()
+                .filter(c -> c.x == x && c.y == y)
+                .findFirst();
+
+        if (cellOptional.isPresent()) {
+            CellStateContainer cell = cellOptional.get();
+            return cell.getBuildings().size() <= 0;
+        } else {
+            System.out.println("Invalid cell selected");
+        }
+        return true;
     }
 }
