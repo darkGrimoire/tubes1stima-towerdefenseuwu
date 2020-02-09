@@ -331,8 +331,21 @@ public class Bot {
      **/
     private List<Missile> getAllMissilesForPlayer(PlayerType playerType) {
         return gameState.getGameMap().stream()
-                .filter(p -> p.playerType == playerType)
+                //.filter(p -> p.playerType == playerType)
                 .flatMap(c -> c.getMissiles().stream())
+                .filter(direction.LEFT)
+                .collect(Collectors.toList());
+    }
+    /**
+     * Get all enemy active tesla (or at least 1 turn before working)
+     *
+     * @return the result
+     **/
+    private List<Building> enemyTeslaChecker() {
+        return gameState.getGameMap().stream()
+                .filter(c -> c.cellOwner == PlayerType.B)
+                .flatMap(c -> c.getBuildings().stream())
+                .filter(BuildingType.TESLA && (constructionTimeLeft <=1))
                 .collect(Collectors.toList());
     }
     /**
@@ -341,9 +354,9 @@ public class Bot {
      * @return the result
      **/
     private boolean ironCurtainCondition() {
-        boolean cond1 = getAllMissilesForPlayer(PlayerType.B) > 7; // kalo ada missile lebih dari x
-        boolean cond2 = canAffordBuilding(BuildingType.IRONCURTAIN); //bisa beli iron curtain
-        boolean cond3 =  true; //iron curtain siap pake juga
-        return(cond1 && cond2 && cond3);
+        boolean cond1 = canAffordBuilding(BuildingType.IRONCURTAIN); //bisa beli iron curtain
+        boolean cond2 = getAllMissilesForPlayer(PlayerType.B) > 7; // kalo ada missile lebih dari x
+        boolean cond3 = enemyTeslaChecker().size() > 0 && opponent.energy >= gameDetails.buildingsStats.get(BuildingType.TESLA).energyPerShot + 20 ; //tesla ready to fire checker
+        return(cond1 && (cond2 || cond3));
     }
 }
