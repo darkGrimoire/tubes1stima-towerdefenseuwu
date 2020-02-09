@@ -4,7 +4,8 @@ public enum BuildingType {
     DEFENSE(0),
     ATTACK(1),
     ENERGY(2),
-    TESLA(4);
+    TESLA(4),
+    IRONCURTAIN(5);
 
     private int type;
 

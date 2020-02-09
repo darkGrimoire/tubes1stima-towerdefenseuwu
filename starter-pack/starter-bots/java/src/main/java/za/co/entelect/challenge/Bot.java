@@ -52,6 +52,7 @@ public class Bot {
      * @return the result
      **/
     public String run() {
+        if(ironCurtainCondition()) return(buildCommand(0, 0, BuildingType.IRONCURTAIN));
         if(!teslaBuilt()){//at least 1 own tesla exist
             if (isUnderAttack()) {
                 return defendRow(); //greed by my lowest defend value
@@ -138,7 +139,7 @@ public class Bot {
      **/
     private boolean needEnergy(){
         int countEnergy=0;
-        for (int i = 0; i < gameState.gameDetails.mapWidth / 2; i++){
+        for (int i = 0; i < gameWidth / 2; i++){
             int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
             countEnergy += myEnergyOnRow;
         }
@@ -321,5 +322,28 @@ public class Bot {
                 .flatMap(c -> c.getBuildings().stream())
                 .filter(filter)
                 .collect(Collectors.toList());
+    }
+    /**
+     * Get all missiles for player
+     *
+     * @param playerType the player type
+     * @return the result
+     **/
+    private List<Missile> getAllMissilesForPlayer(PlayerType playerType) {
+        return gameState.getGameMap().stream()
+                .filter(p -> p.playerType == playerType)
+                .flatMap(c -> c.getMissiles().stream())
+                .collect(Collectors.toList());
+    }
+    /**
+     * iron curtain condition
+     *
+     * @return the result
+     **/
+    private boolean ironCurtainCondition() {
+        boolean cond1 = getAllMissilesForPlayer(PlayerType.B) > 7; // kalo ada missile lebih dari x
+        boolean cond2 = canAffordBuilding(BuildingType.IRONCURTAIN); //bisa beli iron curtain
+        boolean cond3 =  true; //iron curtain siap pake juga
+        return(cond1 && cond2 && cond3);
     }
 }
