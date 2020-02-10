@@ -54,23 +54,27 @@ public class Bot {
      * @return the result
      **/
     public String run() {
-        if(ironCurtainCondition()) return buildCommand(0, 0, BuildingType.IRONCURTAIN);
+        String command = "";
+//        if(ironCurtainCondition()) return buildCommand(0, 0, BuildingType.IRONCURTAIN);
         if(!teslaBuilt()){//at least 1 own tesla exist
-            if (isUnderAttack()) {
-                return defendRow(); //greed by my lowest defend value
-            } else if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
-                return buildEnergy(); // build until NOT(needEnergy())
-            } else if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (buildTesla()!= NOTHING_COMMAND)) { 
-                return buildTesla(); // build Tesla
-            } else if (canAffordBuilding(BuildingType.ATTACK)) {
-                return attackByLowestDef(); // greed by lowest enemy defence
-            } else {
-                return doNothingCommand();
+            if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
+                command = buildEnergy(); // build until NOT(needEnergy())
             }
+            if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (command == "")) {
+                command =  buildTesla(); // build Tesla
+            }
+            if (isUnderAttack() && command == "") {
+                command = defendRow(); //greed by my lowest defend value
+            }
+            if (canAffordBuilding(BuildingType.ATTACK) && command == "") {
+                command = attackByLowestDef(); // greed by lowest enemy defence
+            }
+            // return "";
         }
         else{
-            return NOTHING_COMMAND; //sistem fawis in here
+            command = buildTesla();
         }
+        return command;
     }
     /**
      * is Tesla already built at least 1
@@ -141,7 +145,7 @@ public class Bot {
      **/
     private boolean needEnergy(){
         int countEnergy=0;
-        for (int i = 0; i < gameWidth / 2; i++){
+        for (int i = 0; i < gameHeight; i++){
             int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
             countEnergy += myEnergyOnRow;
         }
@@ -154,18 +158,19 @@ public class Bot {
      **/
     private String buildEnergy() {
 
-        for (int k = 0; k < gameWidth / 2; k++) {//col from 0 to max
-            int i=0; //row from bottom
-            int j=gameHeight; //row from top
+        for (int k = 0; k < gameWidth / 2; k++) {//x from 0 to max
+            int i=0; //row from top
+            int j=gameHeight-1; //row from bottom
             while(i<=j){
-                int myEnergyOnRowI = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
-                int myEnergyOnRowJ = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, j).size();
-                if (isCellEmpty(i, k)) {
+//                int myEnergyOnRowI = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
+//                int myEnergyOnRowJ = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, j).size();
+                if (isCellEmpty(k, i)) {
                     return buildCommand(k, i, BuildingType.ENERGY);
                 }
-                if (isCellEmpty(j, k)) {
+                if (isCellEmpty(k, j)) {
                     return buildCommand(k, j, BuildingType.ENERGY);
                 }
+                i++; j--;
             }
         }
         return "";
@@ -184,9 +189,19 @@ public class Bot {
             int myDefenseOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i).size();
             int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
             int myAttackOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ATTACK, i).size();
-            int myRowStrength = myDefenseOnRow*3 + myAttackOnRow + myEnergyOnRow;
+            int myRowStrength = myDefenseOnRow*3;
             //BAGIAN GREEDY : MENCARI NILAI MAX
-            if(enemyAttackOnRow - myRowStrength > tempVurneability) weakestSpot = i;
+            if (enemyAttackOnRow > 0 && myAttackOnRow == 0){
+                weakestSpot = i;
+                for (int j = (gameWidth /2) - 4; i >= 1; i--) {
+                    if (isCellEmpty(j, weakestSpot)) {
+                        return buildCommand(j, weakestSpot, BuildingType.ATTACK);}
+                }
+            }
+            if(enemyAttackOnRow - myRowStrength > tempVurneability){
+                tempVurneability = enemyAttackOnRow - myRowStrength;
+                weakestSpot = i;
+            }
         }
         return placeDefence(weakestSpot);
     }
@@ -195,26 +210,26 @@ public class Bot {
         boolean enoughEnergy = myEnergyOnRow >=2;
         if (canAffordBuilding(BuildingType.DEFENSE))
         {
-            for (int i = 5; i >= (gameWidth / 2) - 1; i++) {
+            for (int i = 5; i < (gameWidth / 2) - 1; i++) {
             if (isCellEmpty(i, y)) {
                 return buildCommand(i, y, BuildingType.DEFENSE);}
             }
         }
         if (canAffordBuilding(BuildingType.ENERGY) && !enoughEnergy)
         {
-            for (int i = 0; i >= (gameWidth / 2) - 1; i++) {
+            for (int i = 0; i < (gameWidth / 2) - 1; i++) {
             if (isCellEmpty(i, y)) {
                 return buildCommand(i, y, BuildingType.ENERGY);}
             }
         }
-        if (canAffordBuilding(BuildingType.ATTACK) )
-        {
-            for (int i = 0; i >= (gameWidth / 2) - 1; i++) {
-            if (isCellEmpty(i, y)) {
-                return buildCommand(i, y, BuildingType.ATTACK);}
+        if (canAffordBuilding(BuildingType.ATTACK) ) {
+            for (int i = 1; i < (gameWidth / 2) - 1; i++) {
+                if (isCellEmpty(i, y)) {
+                    return buildCommand(i, y, BuildingType.ATTACK);
+                }
             }
         }
-        return doNothingCommand();
+        return "lah kumahou";
     }
 
     /**
@@ -229,11 +244,11 @@ public class Bot {
             int myDefenseOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i).size();
             int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
             int myAttackOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ATTACK, i).size();
-            int myRowStrength = myDefenseOnRow*3 + myAttackOnRow + myEnergyOnRow;
+            int myRowStrength = myDefenseOnRow*3;
             //boolean opponentAttacks = getAnyBuildingsForPlayer(PlayerType.B, building -> building.buildingType == ATTACK, i);
             //boolean myDefense = getAnyBuildingsForPlayer(PlayerType.A, building -> building.buildingType == DEFENSE, i);
 
-            if (enemyAttackOnRow >= myRowStrength) {
+            if (enemyAttackOnRow > myRowStrength || (myAttackOnRow == 0 && enemyAttackOnRow > 0)) {
                 return true;
             }
         }
@@ -247,16 +262,19 @@ public class Bot {
     private String attackByLowestDef() {
         int weakestSpot=0;//most vurneable spot by row
         float tempVurneability=0;
-        for (int i = gameHeight; i >= 0; i--) {
+        for (int i = gameHeight-1; i >= 0; i--) {
             int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
             int enemyDefenseOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENSE, i).size();
             int enemyTeslaOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.TESLA, i).size();
             int enemyEnergyOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ENERGY, i).size();
             int enemyRowStrength = enemyDefenseOnRow*3 + enemyAttackOnRow + enemyEnergyOnRow + enemyTeslaOnRow;
             int myAttackOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ATTACK, i).size();
-            if(enemyRowStrength - (myAttackOnRow/2) > tempVurneability) weakestSpot = i;
+            if(enemyRowStrength - myAttackOnRow > tempVurneability) {
+                tempVurneability = enemyRowStrength - myAttackOnRow;
+                weakestSpot = i;
+            }
         }
-        for (int i = 0; i >= (gameWidth / 2) - 1; i++) {
+        for (int i = (gameWidth /2) - 4; i >= 1; i--) {
             if (isCellEmpty(i, weakestSpot)) {
                 return buildCommand(i, weakestSpot, BuildingType.ATTACK);}
             }
@@ -374,7 +392,7 @@ public class Bot {
      * @return the result
      **/
     private String buildCommand(int x, int y, BuildingType buildingType) {
-        return String.format("%d,%d,%d", x, y, buildingType);
+        return String.format("%d,%d,%s", x, y, String.valueOf(buildingType.getType()));
     }
 
     /**
