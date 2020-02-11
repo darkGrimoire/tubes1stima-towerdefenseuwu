@@ -60,9 +60,9 @@ public class Bot {
             if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
                 command = buildEnergy(); // build until NOT(needEnergy())
             }
-            if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (command == "")) {
-                command =  buildTesla(); // build Tesla
-            }
+//            if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (command == "")) {
+//                command =  buildTesla(); // build Tesla
+//            }
             if (isUnderAttack() && command == "") {
                 command = defendRow(); //greed by my lowest defend value
             }
@@ -355,7 +355,7 @@ public class Bot {
         return gameState.getGameMap().stream()
                 //.filter(p -> p.playerType == playerType)
                 .flatMap(c -> c.getMissiles().stream())
-                .filter(m -> m.getPlayerType() == playerType)
+                .filter(p -> p.isPlayers(playerType))
                 .collect(Collectors.toList());
     }
     /**
