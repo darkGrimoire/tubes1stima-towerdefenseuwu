@@ -52,18 +52,19 @@ public class Bot {
      **/
     public String run() {
         String command = "";
+        if (isteslaEnergyReq() && (command == "")) {
+            command = buildTesla(); // build Tesla
+        }
         if (isUnderAttack() && command == "") {
             command = defendRow(); //greed by my lowest defend value
         }
-        if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
+        if (numEnergy() < 10 && canAffordBuilding(BuildingType.ENERGY) && command == "") {
             command = buildEnergy(); // build until NOT(needEnergy())
         }
-        if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (command == "")) {
-            command = buildTesla(); // build Tesla
-        }
-        if (canAffordBuilding(BuildingType.ATTACK) && command == "") {
+        if (numEnergy() >= 5 && canAffordBuilding(BuildingType.ATTACK) && command == "") {
             command = attackByLowestDef(); // greed by lowest enemy defence
         }
+
         // return "";
     return command;
     }
@@ -84,7 +85,9 @@ public class Bot {
      * @return true if energy > Tesla construct Cost + one Tesla fire Cost
      */
     private boolean isteslaEnergyReq(){
-        return (myself.energy >= 200);
+        if (numEnergy() == 10) return myself.energy >= 150;
+        if (numEnergy() > gameHeight) return myself.energy >= 160;
+        return (myself.energy >= 170);
     }
 
     /**
@@ -98,7 +101,7 @@ public class Bot {
         int EnemyDeffRow = 0;
         List<Integer> enemyAttRowList = new ArrayList<Integer>();
         List<Integer> enemyDefRowList = new ArrayList<Integer>();
-        int pickedRow = -1;
+        int pickedRow;
         int i,j;
         for (i=0; i < gameDetails.mapHeight; i++){
             int EnemyAtt = getAllBuildingsForPlayer(PlayerType.B, b-> b.buildingType == BuildingType.ATTACK, i).size();
@@ -120,7 +123,7 @@ public class Bot {
 
         // Checks for attack > 4
         for (i = 0; i<enemyAttRowList.size(); i++){
-            if (enemyAttRowList.get(i) >= 40){
+            if (Math.floorDiv(enemyAttRowList.get(i),10) >= 4){
                 pickedRow = enemyAttRowList.get(i) % 10;
                 // Checks if occupied
                 if (isCellEmpty(gameWidth/2 -1, pickedRow)){
@@ -137,7 +140,7 @@ public class Bot {
                 return buildCommand(gameWidth/2 -1, pickedRow, BuildingType.TESLA);
             }
         }
-        return NOTHING_COMMAND;
+        return "";
 //        if (mostEnemyAtt > 4){
 //            j = gameDetails.mapWidth/2 - 4 ;
 //            i = EnemyAttRow;
@@ -162,13 +165,13 @@ public class Bot {
      *
      * @return sum of my energy > x, x = certain number
      **/
-    private boolean needEnergy(){
+    private int numEnergy(){
         int countEnergy=0;
         for (int i = 0; i < gameHeight; i++){
             int myEnergyOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ENERGY, i).size();
             countEnergy += myEnergyOnRow;
         }
-        return (countEnergy < 10);
+        return countEnergy;
     }
     /**
      * Build energy
@@ -210,9 +213,12 @@ public class Bot {
             int myAttackOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ATTACK, i).size();
             int myRowStrength = myDefenseOnRow*3;
             //BAGIAN GREEDY : MENCARI NILAI MAX
-            if (enemyAttackOnRow > 0 && myAttackOnRow == 0){
+            if (enemyAttackOnRow > 1 && myDefenseOnRow == 0 ){
+                placeDefence(i);
+            }
+            if (enemyAttackOnRow > 0 && myAttackOnRow == 0 && myDefenseOnRow > 0 && canAffordBuilding(BuildingType.ATTACK)){
                 weakestSpot = i;
-                for (int j = (gameWidth /2) - 4; i >= 1; i--) {
+                for (int j = (gameWidth /2) - 4; j >= 1; j--) {
                     if (isCellEmpty(j, weakestSpot)) {
                         return buildCommand(j, weakestSpot, BuildingType.ATTACK);}
                 }
@@ -248,7 +254,7 @@ public class Bot {
                 }
             }
         }
-        return "lah kumahou";
+        return "";
     }
 
     /**
@@ -267,7 +273,7 @@ public class Bot {
             //boolean opponentAttacks = getAnyBuildingsForPlayer(PlayerType.B, building -> building.buildingType == ATTACK, i);
             //boolean myDefense = getAnyBuildingsForPlayer(PlayerType.A, building -> building.buildingType == DEFENSE, i);
 
-            if (enemyAttackOnRow > myRowStrength || (myAttackOnRow == 0 && enemyAttackOnRow > 0)) {
+            if (enemyAttackOnRow > myRowStrength || ((myDefenseOnRow == 0 || myAttackOnRow == 0) && enemyAttackOnRow > 0)) {
                 return true;
             }
         }
