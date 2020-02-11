@@ -5,10 +5,7 @@ import za.co.entelect.challenge.enums.BuildingType;
 import za.co.entelect.challenge.enums.Direction;
 import za.co.entelect.challenge.enums.PlayerType;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -55,26 +52,20 @@ public class Bot {
      **/
     public String run() {
         String command = "";
-//        if(ironCurtainCondition()) return buildCommand(0, 0, BuildingType.IRONCURTAIN);
-        if(!teslaBuilt()){//at least 1 own tesla exist
-            if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
-                command = buildEnergy(); // build until NOT(needEnergy())
-            }
-//            if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (command == "")) {
-//                command =  buildTesla(); // build Tesla
-//            }
-            if (isUnderAttack() && command == "") {
-                command = defendRow(); //greed by my lowest defend value
-            }
-            if (canAffordBuilding(BuildingType.ATTACK) && command == "") {
-                command = attackByLowestDef(); // greed by lowest enemy defence
-            }
-            // return "";
+        if (isUnderAttack() && command == "") {
+            command = defendRow(); //greed by my lowest defend value
         }
-        else{
-            command = buildTesla();
+        if (needEnergy() && canAffordBuilding(BuildingType.ENERGY)) {
+            command = buildEnergy(); // build until NOT(needEnergy())
         }
-        return command;
+        if (canAffordBuilding(BuildingType.TESLA) && isteslaEnergyReq() && (command == "")) {
+            command = buildTesla(); // build Tesla
+        }
+        if (canAffordBuilding(BuildingType.ATTACK) && command == "") {
+            command = attackByLowestDef(); // greed by lowest enemy defence
+        }
+        // return "";
+    return command;
     }
     /**
      * is Tesla already built at least 1
@@ -105,37 +96,65 @@ public class Bot {
         int EnemyAttRow = 0;
         int mostEnemyDeff = 0;
         int EnemyDeffRow = 0;
+        List<Integer> enemyAttRowList = new ArrayList<Integer>();
+        List<Integer> enemyDefRowList = new ArrayList<Integer>();
+        int pickedRow = -1;
         int i,j;
-        boolean crampedAtt;
         for (i=0; i < gameDetails.mapHeight; i++){
-            int EnemyAtt = getAllBuildingsForPlayer(PlayerType.A, b-> b.buildingType == BuildingType.ATTACK, i).size();
-            int EnemyDeff = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.DEFENSE, i).size();
-            if (mostEnemyAtt < EnemyAtt){
-                mostEnemyAtt = EnemyAtt;
-                EnemyAttRow = i;
-            }
-            if (mostEnemyDeff < EnemyDeff) {
-                mostEnemyDeff = EnemyDeff;
-                EnemyDeffRow = i;
-            }
+            int EnemyAtt = getAllBuildingsForPlayer(PlayerType.B, b-> b.buildingType == BuildingType.ATTACK, i).size();
+            int EnemyDeff = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENSE, i).size();
+
+            enemyAttRowList.add(EnemyAtt * 10 + i);
+            enemyDefRowList.add(EnemyDeff * 10 + i);
+//            if (mostEnemyAtt < EnemyAtt){
+//                mostEnemyAtt = EnemyAtt;
+//                EnemyAttRow = i;
+//            }
+//            if (mostEnemyDeff < EnemyDeff) {
+//                mostEnemyDeff = EnemyDeff;
+//                EnemyDeffRow = i;
+//            }
         }
-        if (mostEnemyAtt > 4){
-            j = gameDetails.mapWidth/2 - 4 ;
-            i = EnemyAttRow;
-        } else {
-            j = gameDetails.mapWidth/2 - 1;
-            i = EnemyDeffRow;
+        Collections.sort(enemyAttRowList, Collections.reverseOrder());
+        Collections.sort(enemyDefRowList, Collections.reverseOrder());
+
+        // Checks for attack > 4
+        for (i = 0; i<enemyAttRowList.size(); i++){
+            if (enemyAttRowList.get(i) >= 40){
+                pickedRow = enemyAttRowList.get(i) % 10;
+                // Checks if occupied
+                if (isCellEmpty(gameWidth/2 -1, pickedRow)){
+                    return buildCommand(gameWidth/2 -1, pickedRow, BuildingType.TESLA);
+                }
+            }
         }
 
-        if ((i-1>=0) && isCellEmpty(i-1, j)){ //Validasi nilai?
-            return buildCommand(i, j, BuildingType.TESLA);
-        } else if ((i+1 < gameDetails.mapHeight) && isCellEmpty(i+1, j)) {
-            return buildCommand(i, j, BuildingType.TESLA);
-        } else if (isCellEmpty(i, j)){
-            return buildCommand(i, j, BuildingType.TESLA);
-        } else {
-            return NOTHING_COMMAND;
-        } 
+        // if fail, checks for defense
+        for (i = 0; i<enemyDefRowList.size(); i++){
+            pickedRow = enemyDefRowList.get(i) % 10;
+            // Checks if occupied
+            if (isCellEmpty(gameWidth/2 - 1, pickedRow)){
+                return buildCommand(gameWidth/2 -1, pickedRow, BuildingType.TESLA);
+            }
+        }
+        return NOTHING_COMMAND;
+//        if (mostEnemyAtt > 4){
+//            j = gameDetails.mapWidth/2 - 4 ;
+//            i = EnemyAttRow;
+//        } else {
+//            j = gameDetails.mapWidth/2 - 1;
+//            i = EnemyDeffRow;
+//        }
+//
+//        if ((i-1>=0) && isCellEmpty(i-1, j)){ //Validasi nilai?
+//            return buildCommand(i, j, BuildingType.TESLA);
+//        } else if ((i+1 < gameDetails.mapHeight) && isCellEmpty(i+1, j)) {
+//            return buildCommand(i, j, BuildingType.TESLA);
+//        } else if (isCellEmpty(i, j)){
+//            return buildCommand(i, j, BuildingType.TESLA);
+//        } else {
+//            return NOTHING_COMMAND;
+//        }
     }
 
     /**
@@ -262,6 +281,8 @@ public class Bot {
     private String attackByLowestDef() {
         int weakestSpot=0;//most vurneable spot by row
         float tempVurneability=0;
+        int pickedRow;
+        List<Integer> enemyDefList = new ArrayList<>();
         for (int i = gameHeight-1; i >= 0; i--) {
             int enemyAttackOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ATTACK, i).size();
             int enemyDefenseOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.DEFENSE, i).size();
@@ -269,15 +290,26 @@ public class Bot {
             int enemyEnergyOnRow = getAllBuildingsForPlayer(PlayerType.B, b -> b.buildingType == BuildingType.ENERGY, i).size();
             int enemyRowStrength = enemyDefenseOnRow*3 + enemyAttackOnRow + enemyEnergyOnRow + enemyTeslaOnRow;
             int myAttackOnRow = getAllBuildingsForPlayer(PlayerType.A, b -> b.buildingType == BuildingType.ATTACK, i).size();
+            enemyDefList.add(enemyRowStrength * 10 + i);
             if(enemyRowStrength - myAttackOnRow > tempVurneability) {
                 tempVurneability = enemyRowStrength - myAttackOnRow;
                 weakestSpot = i;
             }
         }
+        Collections.sort(enemyDefList, Collections.reverseOrder());
         for (int i = (gameWidth /2) - 4; i >= 1; i--) {
             if (isCellEmpty(i, weakestSpot)) {
                 return buildCommand(i, weakestSpot, BuildingType.ATTACK);}
             }
+        // if all cells already occupied, search in other row
+        for (int i = 1; i<enemyDefList.size(); i++){
+            pickedRow = enemyDefList.get(i) % 10;
+            for (int j = gameWidth/2 - 4; j >= 1; j--){
+                if (isCellEmpty(j, pickedRow)) {
+                    return buildCommand(j, pickedRow, BuildingType.ATTACK);
+                }
+            }
+        }
         return "";
     }
     /**
