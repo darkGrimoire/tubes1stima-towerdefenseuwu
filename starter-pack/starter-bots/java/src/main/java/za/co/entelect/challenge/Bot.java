@@ -85,9 +85,9 @@ public class Bot {
      * @return true if energy > Tesla construct Cost + one Tesla fire Cost
      */
     private boolean isteslaEnergyReq(){
-        if (numEnergy() == 10) return myself.energy >= 150;
-        if (numEnergy() > gameHeight) return myself.energy >= 160;
-        return (myself.energy >= 170);
+        if (numEnergy() == 10) return myself.energy >= 160;
+        if (numEnergy() > gameHeight) return myself.energy >= 170;
+        return (myself.energy >= 180);
     }
 
     /**
