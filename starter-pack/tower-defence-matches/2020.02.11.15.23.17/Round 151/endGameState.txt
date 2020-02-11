@@ -1,4 +1,0 @@
-The game ended in a tie
-
-A - Joestar- score:8869 health:0
-B - Joestar- score:8869 health:0
