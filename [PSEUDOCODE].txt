@@ -1,0 +1,231 @@
+[PSEUDOCODE]
+
+PROGRAM Bot.java
+Program bot untuk memecahkan permainan dengan menggunakan algoritma greedy.
+// Strategy berdasarkan prioritas
+// 1. Strategi Tesla
+// 2. Strategi Heuristik: Defence
+// 3. Strategi Heuristik: Energy
+// 4. Strategi Attack
+// Fungsi Objektif: Mendapatkan skor sebesar-besarnya dari menyerang base lawan
+//                  atau menghancurkan sebanyak-banyaknya building lawan dengan tesla.
+// Strategi Heuristik dimaksudkan agar bot dapat tetap hidup dari serangan musuh.
+// Strategi utama penyerang greedy adalah Tesla dan Attack.
+
+function SeleksiStrategiTesla():
+    // Will select Strategi Tesla if selfEnergy and sumOfSelfEnergyBuilding
+    // is enough
+    // Make Sure if there's no command from previous strategy
+    IF command == "" THEN
+        RETURN ((sumOfSelfEnergyBuilding == 10  AND selfEnergy >= 160)
+            OR (sumOfSelfEnergyBuilding > 7 AND selfEnergy >= 160)
+            OR (selfEnergy >= 160))
+    ELSE
+        // DO NOTHING, jump to the next strategy
+
+function StrategiTesla():
+    // Will return command to be applied
+    // Will build TESLA in FRONTLINE which has the crowdest
+    // Attack or Defence Building
+    // Make Empty Lists
+    SET listOfSumEnemyAttackBuilding to []
+    SET listOfSumEnemyDefenceBuilding to []
+    // Count sum of enemy attack and defence building, store it in list
+    // along with its row
+    FOR i as eachRow in gameMap
+        APPEND listOfSumEnemyAttackBuilding WITH (sumOfenemyAttackBuilding * 10 + i)
+        APPEND listOfSumEnemyDefenceBuilding WITH (sumOfenemyDefenceBuilding * 10 + i)
+    ENDFOR
+    // Sort the lists descending
+    SORT DESCENDING listOfSumEnemyAttackBuilding
+    SORT DESCENDING listOfSumEnemyDefenceBuilding
+    // Checks for row where enemy's sum of attack is more than 4
+    FOR eachObject in listOfSumEnemyAttackBuilding
+        SET pickedRow = eachObject % 10
+        IF IsCellEmpty(pickedRow) THEN
+            RETURN BUILD TESLA Building in x=FRONTLINE AND y=pickedRow
+            //Note: FRONTLINE is furthest column from base
+        ENDIF
+    ENDFOR
+    // If no row fulfill the condition, checks for row with lots of enemy's defence
+    FOR eachObject in listOfSumEnemyDefenceBuilding
+        SET pickedRow = listOfSumEnemyDefenceBuilding[pickedRow]
+        IF IsCellEmpty(pickedRow) THEN
+            RETURN BUILD TESLA Building in x=FRONTLINE AND y=pickedRow
+            //Note: FRONTLINE is furthest column from base
+        ENDIF
+    ENDFOR
+    // If there's still no build in this code, return none and
+    // step into the next strategy
+    IF NO_BUILD THEN
+        RETURN ""
+    ENDIF
+    
+function SeleksiIsUnderAttack():
+    // Will select Strategi Heuristik Defence IF The program thinks
+    // it is under attack by the enemy
+    // Make Sure if there's no command from previous strategy
+    IF command == "" THEN
+        FOR eachRow in gameMap
+            // get row building strength from each Player
+            GET sumOfenemyAttackBuilding in eachRow
+            GET sumOfSelfDefenceBuilding in eachRow
+            GET sumOfSelfAttackBuilding in eachRow
+            // Assume 1 Defence Building can hold up to 3 Enemy Attack Building
+            SET SelfRowStrength = sumOfSelfDefenceBuilding * 3
+            // if there's a row that fulfill the condition of UnderAttack, return True
+            // condition of UnderAttack is if enemy attack building is more than our
+            // defence building could handle or there are no self defence nor counterattack
+            // for enemy attack
+            RETURN sumOfenemyAttackBuilding > SelfRowStrength
+                OR ((sumOfSelfDefenceBuilding == 0 OR sumOfSelfAttackBuilding == 0) AND sumOfenemyAttackBuilding > 0)
+        ENDFOR
+    ENDIF
+
+function StrategiHeuristikDefence()
+    // Will return command to be applied
+    // Will determine which to build in case of enemy attack
+    // Consideration to build: Defence for long-term defence
+    //                         Energy for extra energy and cheap cost
+    //                         Attack for counterattack
+    // Search for weakest spot in our rows
+    // determined by if our defence can handle enemy attacks in that row
+    SET weakestSpot to 0
+    SET MostVulnerableValue to 0
+    FOR i as eachRow in gameMap
+        // get row building strength from each Player
+        GET sumOfenemyAttackBuilding in eachRow
+        GET sumOfSelfDefenceBuilding in eachRow
+        GET sumOfSelfAttackBuilding in eachRow
+        // Assume 1 Defence Building can hold up to 3 Enemy Attack Building
+        SET SelfRowStrength = sumOfSelfDefenceBuilding * 3
+        // if there are 2 or more enemy attack and I haven't got any
+        // defence building in that row, start defence mechanism
+        IF sumOfenemyAttackBuilding > 1 AND sumOfSelfDefenceBuilding == 0 THEN
+            START DefenceMechanism(i)
+        ENDIF
+        // if there are any enemy attack and I don't have the counterattack,
+        // build attack for counterattack
+        IF sumOfenemyAttackBuilding > 0 AND sumOfSelfAttackBuilding == 0 THEN
+            IF canAffordBuilding(ATTACK) THEN
+                // ATTACK_AREA is gameWidth/2-4 ~ SecondRow
+                // will check from furthest to nearest to build it
+                RETURN BUILD ATTACK in x=ATTACK_AREA AND y=weakestSpot
+            ENDIF
+        ENDIF
+        // checks our weakest row to be protected
+        IF sumOfenemyAttackBuilding - SelfRowStrength > Vulnerability THEN
+            MostVulnerableValue = sumOfenemyAttackBuilding - SelfRowStrength
+            weakestSpot = i
+        ENDIF
+    ENDFOR
+    // protect our weakest row
+    START DefenceMechanism(weakestSpot)
+
+function DefenceMechanism(integer weakestSpot):
+    // Will return command to be applied
+    // Will determine which to build in case of enemy attack
+    // our weakest spot based on considerations before
+    GET sumOfSelfEnergyBuilding
+    // priority for DEFENSE for long-term defence
+    IF canAffordBuilding(DEFENSE) THEN
+        // DEFENCE_AREA is gameWidth/2-2 ~ gameWidth/2-4
+        FOR eachRow in DEFENCE_AREA
+            IF IsCellEmpty(weakestSpot, eachRow) THEN
+                RETURN BUILD DEFENCE in x=weakestSpot AND y=eachRow
+            ENDIF
+        ENDFOR
+    ENDIF
+    // priority for energy for extra energy shortwhile and cheap cost
+    // max 2 energy in a row
+    IF canAffordBuilding(ENERGY) AND sumOfSelfEnergyBuilding <=2 THEN
+        // ENERGY_AREA is 0-1
+        FOR eachRow in ENERGY_AREA
+            IF IsCellEmpty(weakestSpot, eachRow) THEN
+                RETURN BUILD ENERGY in x=weakestSpot AND y=eachRow
+            ENDIF
+        ENDFOR
+    ENDIF
+    // priority to attack for counterattack
+    IF canAffordBuilding(ATTACK) THEN
+        // ATTACK_AREA is 1 ~ gameWidth/2-1
+        FOR eachRow in ATTACK_AREA
+            IF IsCellEmpty(weakestSpot, eachRow) THEN
+                RETURN BUILD ATTACK in x=weakestSpot AND y=eachRow
+            ENDIF
+        ENDFOR
+    ENDIF
+    // If there's still no build in this code, return none and
+    // step into the next strategy
+    IF NO_BUILD THEN
+        RETURN ""
+    ENDIF
+    
+
+
+function SeleksiBuildEnergy():
+    // Will select Strategi Heuristik Energy IF
+    // sumOfSelfEnergyBuilding < MAXEnergyBuilding
+    // Make Sure if there's no command from previous strategy
+    IF command == "" THEN
+        GET sumOfSelfEnergyBuilding
+        // Max energy is 9
+        RETURN sumOfSelfEnergyBuilding < 10
+    ENDIF
+
+function BuildEnergy():
+    // Will return command to be applied
+    // Will determine where to build energy
+    // Energy area will be all of column 0 and 2 of column 1
+    // Build with pattern: upper-bottom
+    FOR eachColumn in ENERGY_AREA
+        FOR eachRow in gameHeight
+            IF IsCellEmpty(eachColumn, eachRow) THEN
+                RETURN BUILD ENERGY in x=eachColumn AND y=eachRow
+            ENDIF
+            IF IsCellEmpty(eachColumn, gameHeight-eachRow) THEN
+                RETURN BUILD ENERGY in x=eachColumn AND y=gameHeight-eachRow
+            ENDIF
+        ENDFOR
+    ENDFOR
+
+function SeleksiStrategiAttack():
+    // Will select Strategi Attack
+    // Make Sure if there's no command from previous strategy
+    IF command == "" THEN
+        GET sumOfSelfEnergyBuilding
+        // Make sure energy is not in crisis (< 5)
+        RETURN sumOfSelfEnergyBuilding >= 5 
+            AND canAffordBuilding(ATTACK)
+    ENDIF
+
+function StrategiAttack():
+    // Will return command to be applied
+    // Will build attack where enemy has lowest
+    // total defense
+    // set variables
+    SET listOfSumEnemyDefenceBuilding = []
+    SET MostVulnerableValue = 0
+    SET weakestSpot = 0
+    FOR i as eachRow in gameHeight-1
+        // Search for enemy lowest defense
+        GET sumOfAllEnemyBuilding
+        GET sumOfSelfAttackBuilding
+        APPEND listOfSumEnemyDefenceBuilding
+            WITH sumOfSelfAttackBuilding * 10 - 1
+        IF sumOfenemyAttackBuilding - sumOfSelfAttackBuilding > MostVulnerableValue THEN
+            MostVulnerableValue = sumOfenemyAttackBuilding - sumOfSelfAttackBuilding
+            weakestSpot = i
+        ENDIF
+    ENDFOR
+    // Make the list ranked from lowest to highest defence
+    SORT DESCENDING listOfSumEnemyDefenceBuilding
+    FOR eachObject in listOfSumEnemyAttackBuilding
+        SET pickedRow = eachObject % 10
+        IF IsCellEmpty(pickedRow) THEN
+            RETURN BUILD ATTACK Building in x=ATTACK_AREA AND y=pickedRow
+            //Note: ATTACK_AREA is gameWidth/2-4  ~ 1
+        ENDIF
+    ENDFOR
+                
+

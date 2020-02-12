@@ -1,0 +1,51 @@
+RANCANGAN STRATEGI (urut berdasarkan prioritas)
+
+1. Strategi TESLA
+    Syarat:
+        if sumOfEnergyBuilding == 10 && self.energy >= 160 
+        OR if sumOfEnergyBuilding > gameHeight && self.energy  >= 170
+        OR self.energy >= 180
+    
+    Rencana:
+        1. Buat 2 list yang berisi jumlah attack musuh dan jumlah defense musuh tiap barisnya
+        2. cari row yang terbanyak attack musuhnya dan jumlahnya >= 4.
+            Kalo ada build tesla di front line row itu, kalo occupied cari
+            terbanyak kedua yang masih masuk di kondisinya. Kalo gaada ke 
+            step 3
+        3. cari row yg terbanyak defense musuhnya
+            Kalo occupied cari terbanyak kedua dan seterusnya. Kalo gaada
+            beralih ke rencana berikutnya.
+
+2. Strategi IsUnderAttack
+    Syarat:
+        if enemyAttackOnRow > myRowStrength
+        OR ((myDefenseOnRow == 0 || myAttackOnRow == 0) && enemyAttackOnRow > 0)
+
+    Rencana:
+        1. Cek setiap row dari atas.
+        2. Kalo ada row yang kita gaada defense tapi ada attack musuh > 1,
+            jalankan Defense Mechanism di row tsb.
+        3. Kalo ada row yang kita ada defese, musuh ada attack, tapi kita 
+            belom ada attack dan KELAYAKAN(energi cukup untuk attack),
+            build attack di belakang defense.
+        4. Cari row musuh terlemah defensenya (asumsi: 1 def untuk 3 serangan musuh),
+            build attack kalau KELAYAKAN(energi cukup untuk attack)
+
+3. Strategi Heuristik: energy (agar bisa ngejalanin offensive tesla)
+    Syarat:
+        jumlahEnergyBuilding < 10
+        KELAYAKAN(energi cukup untuk energi building)
+
+    Rencana:
+        1. coba buat energy atas-bawah, kalo gabisa lanjut ke row berikutnya
+
+4. Strategi Attack
+    Syarat:
+        jumlahEnergyBuilding >= 5
+        KELAYAKAN(energi cukup untuk attack building)
+
+    Rencana:
+        1. Cari row musuh terlemah (tersedikit gedung dan defensenya)
+        2. Coba buat attack di row tersebut, kalau occupied full satu row tsb,
+            buat attack di row terlemah kedua.
+
